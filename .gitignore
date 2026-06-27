@@ -1,0 +1,29 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- OS ---
+.DS_Store
+
+# --- Unpacked experiment data ---
+# The *.tgz archives are version-controlled; their unpacked form (554 MB) is
+# regenerable and must NOT be committed. Specific measurement inputs needed to
+# reproduce this study are force-added (see committed extracted/<sys>/scf.chk and
+# extracted/<sys>/hw_runs/orig_shot10000/).
+extracted/
+
+# --- Regenerable analysis artefacts ---
+# Cached active-space Hamiltonians rebuilt by rebuild_pb_hamiltonian.py
+analysis/ham_cache/
+# Verbose PySCF / pipeline build logs
+analysis/log_*.txt
+# Volumetric orbital cube files (~165 MB, regenerable via export_orbitals.py --cube);
+# the small .molden files in the same folder are kept for inspection.
+*.cube

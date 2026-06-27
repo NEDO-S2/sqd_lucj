@@ -1,0 +1,19 @@
+{
+  "backend": "ibm_pittsburgh",
+  "shots": 10000,
+  "runs": 10,
+  "qpy": "pb3_sqd_circuit_transpiled_ibm_pittsburgh_20260327_180155.qpy",
+  "creg": "sys_meas",
+  "job_ids": [
+    "d8rb6qmgbcrc73f4bpdg",
+    "d8rb6qugbcrc73f4bpe0",
+    "d8rb6r6gbcrc73f4bpf0",
+    "d8rb6r201fac73d44av0",
+    "d8rb6rekodhs73847d5g",
+    "d8rb6rmkodhs73847d6g",
+    "d8rb6ruab0ds73drfiug",
+    "d8rb6s201fac73d44b00",
+    "d8rb6sa01fac73d44b10",
+    "d8rb6si01fac73d44b20"
+  ]
+}

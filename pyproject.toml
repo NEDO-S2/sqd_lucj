@@ -1,0 +1,21 @@
+[project]
+name = "sqd-lucj"
+version = "0.1.0"
+description = "SQD + LUCJ workflow for quantum chemistry"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "pyscf>=2.5",
+    "qiskit-addon-sqd>=0.11",
+    "ffsim>=0.0.80",
+    "qiskit-ibm-runtime>=0.47.0",
+    "qiskit-aer>=0.17.2",
+]
+
+[tool.uv]
+# This project is a collection of analysis scripts, not an installable package.
+package = false
