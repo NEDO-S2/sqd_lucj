@@ -1,0 +1,67 @@
+% Ablation tables for Pb clusters (score-function variants)
+% Source: results/*/ablation_results_raw.csv (10-run means)
+% Time (s): classical wall time for the full 20-iteration run.
+% Error columns: mean |E-E_CASCI| [Ha] at iterations 1,5,10,15,20.
+
+\begin{table}[t]
+\centering
+\caption{Ablation analysis of the acquisition function on the Pb$_2$ cluster. Classical execution time is the wall time of the full 20-iteration run. Reported values are mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20 for each functional combination. All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs).}\label{tab:ablation_pb2}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Acquisition Model & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+Standard SQD & 0.25 & 2.237$\times10^{-5}$ & 4.923$\times10^{-8}$ & 4.923$\times10^{-8}$ & 4.923$\times10^{-8}$ & 4.923$\times10^{-8}$ \\
+Score A (EN only) & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score B (Reg only) & 0.33 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score C (Conf only) & 0.33 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score AB (A$\times$B) & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score BC (B$\times$C) & 0.33 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score AC (A$\times$C) & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Score (a) (Proposed) & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Ablation analysis of the acquisition function on the Pb$_3$ cluster. Classical execution time is the wall time of the full 20-iteration run. Reported values are mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20 for each functional combination. All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs).}\label{tab:ablation_pb3}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Acquisition Model & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+Standard SQD & 3.65 & 2.534$\times10^{-3}$ & 7.079$\times10^{-5}$ & 3.292$\times10^{-5}$ & 3.292$\times10^{-5}$ & 3.292$\times10^{-5}$ \\
+Score A (EN only) & 2.89 & 5.925$\times10^{-1}$ & 7.368$\times10^{-7}$ & 7.368$\times10^{-7}$ & 7.368$\times10^{-7}$ & 7.368$\times10^{-7}$ \\
+Score B (Reg only) & 4.96 & 5.925$\times10^{-1}$ & 2.433$\times10^{-1}$ & 2.018$\times10^{-6}$ & 4.366$\times10^{-7}$ & 4.366$\times10^{-7}$ \\
+Score C (Conf only) & 2.83 & 5.925$\times10^{-1}$ & 7.363$\times10^{-7}$ & 7.363$\times10^{-7}$ & 7.363$\times10^{-7}$ & 7.363$\times10^{-7}$ \\
+Score AB (A$\times$B) & 2.89 & 5.925$\times10^{-1}$ & 7.422$\times10^{-7}$ & 7.422$\times10^{-7}$ & 7.422$\times10^{-7}$ & 7.422$\times10^{-7}$ \\
+Score BC (B$\times$C) & 4.65 & 5.925$\times10^{-1}$ & 1.936$\times10^{-1}$ & 2.092$\times10^{-6}$ & 5.014$\times10^{-7}$ & 5.014$\times10^{-7}$ \\
+Score AC (A$\times$C) & 2.89 & 5.925$\times10^{-1}$ & 7.581$\times10^{-7}$ & 7.581$\times10^{-7}$ & 7.581$\times10^{-7}$ & 7.581$\times10^{-7}$ \\
+Score (a) (Proposed) & 2.88 & 5.925$\times10^{-1}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Ablation analysis of the acquisition function on the Pb$_4$ cluster. Classical execution time is the wall time of the full 20-iteration run. Reported values are mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20 for each functional combination. All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs).}\label{tab:ablation_pb4}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Acquisition Model & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+Standard SQD & 21.02 & 6.916$\times10^{-3}$ & 7.242$\times10^{-4}$ & 2.683$\times10^{-4}$ & 2.151$\times10^{-4}$ & 2.072$\times10^{-4}$ \\
+Score A (EN only) & 36.73 & 1.465$\times10^{0}$ & 2.770$\times10^{-4}$ & 5.056$\times10^{-6}$ & 5.056$\times10^{-6}$ & 5.056$\times10^{-6}$ \\
+Score B (Reg only) & 150.78 & 1.465$\times10^{0}$ & 7.333$\times10^{-1}$ & 6.966$\times10^{-1}$ & 6.925$\times10^{-1}$ & 6.179$\times10^{-1}$ \\
+Score C (Conf only) & 41.76 & 1.465$\times10^{0}$ & 1.308$\times10^{-4}$ & 4.688$\times10^{-6}$ & 4.688$\times10^{-6}$ & 4.688$\times10^{-6}$ \\
+Score AB (A$\times$B) & 38.41 & 1.465$\times10^{0}$ & 5.541$\times10^{-2}$ & 1.539$\times10^{-5}$ & 5.006$\times10^{-6}$ & 5.006$\times10^{-6}$ \\
+Score BC (B$\times$C) & 150.12 & 1.465$\times10^{0}$ & 6.783$\times10^{-1}$ & 6.349$\times10^{-1}$ & 6.284$\times10^{-1}$ & 6.107$\times10^{-1}$ \\
+Score AC (A$\times$C) & 37.28 & 1.465$\times10^{0}$ & 2.755$\times10^{-4}$ & 5.052$\times10^{-6}$ & 5.052$\times10^{-6}$ & 5.052$\times10^{-6}$ \\
+Score (a) (Proposed) & 39.10 & 1.465$\times10^{0}$ & 6.437$\times10^{-2}$ & 1.596$\times10^{-5}$ & 5.015$\times10^{-6}$ & 5.015$\times10^{-6}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}

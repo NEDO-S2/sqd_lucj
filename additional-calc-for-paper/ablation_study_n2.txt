@@ -1,0 +1,391 @@
+import os
+import time
+import warnings
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pyscf
+from qiskit_ibm_runtime import QiskitRuntimeService
+from qiskit_addon_sqd.counts import BitArray
+from qiskit_addon_sqd.fermion import diagonalize_fermionic_hamiltonian, solve_fermion, SCIResult
+
+warnings.filterwarnings("ignore")
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['figure.dpi'] = 140
+os.makedirs("figures", exist_ok=True)
+os.makedirs("results", exist_ok=True)
+
+# 1. 分子モデルの構築
+print("Building molecule and generating integrals...")
+mol = pyscf.gto.Mole()
+mol.build(
+    atom=[["N", (0, 0, 0)], ["N", (1.0, 0, 0)]],
+    basis="6-31g",
+    symmetry="Dooh",
+)
+n_frozen = 2
+active_space = range(n_frozen, mol.nao_nr())
+scf = pyscf.scf.RHF(mol).run()
+
+num_orbitals = len(active_space)
+n_electrons = int(sum(scf.mo_occ[active_space]))
+num_elec_a = (n_electrons + mol.spin) // 2
+num_elec_b = (n_electrons - mol.spin) // 2
+nelec = (num_elec_a, num_elec_b)
+
+cas = pyscf.mcscf.CASCI(scf, num_orbitals, nelec)
+mo = cas.sort_mo(active_space, base=0)
+hcore, nuclear_repulsion_energy = cas.get_h1cas(mo)
+eri = pyscf.ao2mo.restore(1, cas.get_h2cas(mo), num_orbitals)
+exact_energy = cas.run().e_tot
+
+# 2. 実機データのロード
+print("\nLoading hardware job data...")
+job_ids = [
+    "d8sh0dkbp3hs73833mh0",
+    "d8sh0iktqbtc73cuukdg",
+    "d8sh0klbh0os73eo609g",
+    "d8sh0lstqbtc73cuuki0",
+    "d8sh0mstqbtc73cuukj0",
+    "d8sh1p4tqbtc73cuum70",
+    "d8sh1q4tqbtc73cuum8g",
+    "d8sh1rdposuc738n9ebg",
+    "d8sh1scbp3hs73833og0",
+    "d8sh1t5posuc738n9ef0"
+]
+
+service = QiskitRuntimeService()
+counts_list = []
+for jid in job_ids:
+    print(f"  -> Fetching job {jid}...")
+    job = service.job(jid)
+    counts = job.result()[0].data.meas.get_counts()
+
+    bit_array_dict = {}
+    for bitstr, count in counts.items():
+        integer_val = int(bitstr.replace(" ", ""), 2)
+        bit_array_dict[integer_val] = count
+    counts_list.append((jid, bit_array_dict))
+
+print("Job data loaded successfully.\n")
+
+# ====================================================================================
+# 3. アブレーション用 AS-SQD クラス
+class FermionicAS_SQD_Ablation:
+    def __init__(self, hcore, eri, counts_dict, K_init, num_orbs, nelec_tuple, score_type="ABC"):
+        self.hcore = hcore
+        self.eri = eri
+        self.num_orbs = num_orbs
+        self.nelec_alpha = nelec_tuple[0]
+        self.nelec_beta = nelec_tuple[1]
+        self.eps = np.diag(hcore)
+        self.score_type = score_type
+
+        self.counts_dict = counts_dict
+        self.total_shots = sum(counts_dict.values()) if counts_dict else 1
+
+        filtered_counts_dict = {}
+        for bit_int, count in counts_dict.items():
+            occ_a, occ_b = self._get_occs(bit_int)
+            if len(occ_a) == self.nelec_alpha and len(occ_b) == self.nelec_beta:
+                filtered_counts_dict[bit_int] = count
+
+        top_k = sorted(filtered_counts_dict.items(), key=lambda x: -x[1])[:K_init]
+        self.subspace = {k for k, v in top_k}
+        self.history = []
+
+    def _int_to_bool_array(self, bit_int):
+        arr = np.zeros(2 * self.num_orbs, dtype=bool)
+        for i in range(2 * self.num_orbs):
+            if (bit_int & (1 << (2 * self.num_orbs - 1 - i))):
+                arr[i] = True
+        return arr
+
+    def _get_occs(self, bit_int):
+        alpha_int = bit_int & ((1 << self.num_orbs) - 1)
+        beta_int = (bit_int >> self.num_orbs) & ((1 << self.num_orbs) - 1)
+        occ_a = [i for i in range(self.num_orbs) if (alpha_int & (1 << i))]
+        occ_b = [i for i in range(self.num_orbs) if (beta_int & (1 << i))]
+        return occ_a, occ_b
+
+    def _occs_to_int(self, occ_a, occ_b):
+        alpha_int = sum(1 << i for i in occ_a)
+        beta_int = sum(1 << i for i in occ_b)
+        return (beta_int << self.num_orbs) | alpha_int
+
+    def _update_score(self, candidate_scores, new_int, idx, V_ba, delta_E_orb, energies, coeffs_list, E_S0, gamma):
+        en_score_max = 0.0
+        for K in range(len(energies)):
+            E_K = energies[K]
+            C_b_K = coeffs_list[K][idx]
+            denom = max(delta_E_orb + E_S0 - E_K, 1e-4)
+            num = float(abs(C_b_K * V_ba)**2)
+            en_score_K = num / denom
+            if en_score_K > en_score_max:
+                en_score_max = en_score_K
+
+        # --- アブレーションのための各項の独立計算 ---
+        # A: Energy Score
+        A_score = max(en_score_max, 1e-12)
+        # B: Physical Penalty
+        B_score = np.exp(-gamma * delta_E_orb)
+        # C: Sampling Confidence
+        p_meas = self.counts_dict.get(new_int, 0) / self.total_shots
+        C_score = np.log(1 + p_meas + 1e-8)
+
+        # 評価関数の選択
+        if self.score_type == "A":
+            score = A_score
+        elif self.score_type == "B":
+            score = B_score
+        elif self.score_type == "C":
+            score = C_score
+        elif self.score_type == "AB":
+            score = A_score * B_score
+        elif self.score_type == "BC":
+            score = B_score * C_score
+        elif self.score_type == "AC":
+            score = A_score * C_score
+        elif self.score_type == "ABC":
+            score = A_score * B_score * C_score
+        else:
+            score = A_score * B_score * C_score
+
+        if new_int not in candidate_scores or score > candidate_scores[new_int]:
+            candidate_scores[new_int] = score
+
+    def run(self, iterations, B_add, tau_dom, gamma=1.0):
+        start_time = time.time()
+        for it in range(iterations):
+            basis_list = list(self.subspace)
+            bool_matrix = np.array([self._int_to_bool_array(b) for b in basis_list])
+
+            energy, _, coeffs, _ = solve_fermion(
+                bool_matrix, self.hcore, self.eri, open_shell=False, spin_sq=0
+            )
+            coeffs_arr = np.array(coeffs)
+            if coeffs_arr.ndim == 2:
+                if coeffs_arr.shape[0] == len(basis_list):
+                    coeffs_1d = coeffs_arr[:, 0]
+                else:
+                    coeffs_1d = coeffs_arr[0, :]
+            else:
+                coeffs_1d = coeffs_arr
+
+            E_S0 = float(np.sum(energy))
+            energies = [E_S0]
+            coeffs_list = [coeffs_1d]
+
+            self.history.append(E_S0 + nuclear_repulsion_energy)
+
+            if it == iterations - 1:
+                break
+
+            probs = np.abs(coeffs_1d)**2
+            dom_indices = np.where(probs > tau_dom)[0]
+
+            candidate_scores = {}
+            for idx in dom_indices:
+                dom_int = basis_list[idx]
+                occ_a, occ_b = self._get_occs(dom_int)
+                vir_a = [i for i in range(self.num_orbs) if i not in occ_a]
+                vir_b = [i for i in range(self.num_orbs) if i not in occ_b]
+
+                for occ, vir, is_alpha in [(occ_a, vir_a, True), (occ_b, vir_b, False)]:
+                    for p in occ:
+                        for r in vir:
+                            V_ba = self.hcore[p, r]
+                            delta_E_orb = max(abs(self.eps[r] - self.eps[p]), 1e-4)
+                            new_occ = [x for x in occ if x != p] + [r]
+                            new_int = self._occs_to_int(new_occ, occ_b) if is_alpha else self._occs_to_int(occ_a, new_occ)
+
+                            self._update_score(
+                                candidate_scores, new_int, idx, V_ba, delta_E_orb,
+                                energies, coeffs_list, E_S0, gamma
+                            )
+
+                for p in occ_a:
+                    for r in vir_a:
+                        for q in occ_b:
+                            for s in vir_b:
+                                V_ba = self.eri[p, r, q, s]
+                                delta_E_orb = max(abs(self.eps[r] + self.eps[s] - self.eps[p] - self.eps[q]), 1e-4)
+                                new_occ_a = [x for x in occ_a if x != p] + [r]
+                                new_occ_b = [x for x in occ_b if x != q] + [s]
+                                new_int = self._occs_to_int(new_occ_a, new_occ_b)
+
+                                self._update_score(
+                                    candidate_scores, new_int, idx, V_ba, delta_E_orb,
+                                    energies, coeffs_list, E_S0, gamma
+                                )
+
+            for k in self.subspace:
+                candidate_scores.pop(k, None)
+
+            top_candidates = sorted(candidate_scores.items(), key=lambda x: -x[1])[:B_add]
+            for k, _ in top_candidates:
+                self.subspace.add(k)
+
+        elapsed = time.time() - start_time
+
+        while len(self.history) < iterations:
+            self.history.append(self.history[-1] if len(self.history) > 0 else 0.0)
+
+        return self.history[:iterations], elapsed
+
+
+def run_standard_sqd(hcore, eri, num_orbitals, nelec, bit_array_dict, nuclear_repulsion_energy):
+    bit_array = BitArray.from_counts(bit_array_dict, num_bits=2*num_orbitals)
+    std_history = []
+    def std_callback(results: list[SCIResult]):
+        std_history.append(results[0].energy + nuclear_repulsion_energy)
+
+    start_time = time.time()
+    diagonalize_fermionic_hamiltonian(
+        hcore, eri, bit_array,
+        samples_per_batch=100, norb=num_orbitals, nelec=nelec,
+        num_batches=5, energy_tol=1e-5, occupancies_tol=1e-5,
+        max_iterations=5, callback=std_callback, seed=np.random.default_rng(42)
+    )
+    elapsed = time.time() - start_time
+
+    while len(std_history) < 5:
+        std_history.append(std_history[-1] if len(std_history) > 0 else 0.0)
+
+    return std_history[:5], elapsed
+
+# ====================================================================================
+# 4. 実験設定 (アブレーションのパターン)
+experiments = [
+    {"method": "Standard_SQD"},
+    {"method": "AS-SQD", "score_type": "A", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "B", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "C", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "AB", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "BC", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "AC", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 150, "gamma": 1.0, "tau_dom": 0.001}, # 提案手法ベースライン
+
+    # パラメータアブレーション
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 50, "gamma": 1.0, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 300, "gamma": 1.0, "tau_dom": 0.001},
+
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 150, "gamma": 0.1, "tau_dom": 0.001},
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 150, "gamma": 5.0, "tau_dom": 0.001},
+
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 150, "gamma": 1.0, "tau_dom": 0.0001},
+    {"method": "AS-SQD", "score_type": "ABC", "B_add": 150, "gamma": 1.0, "tau_dom": 0.01},
+]
+
+def get_exp_name(exp):
+    if exp["method"] == "Standard_SQD": return "Standard_SQD"
+    if exp["score_type"] != "ABC": return f"Score_{exp['score_type']}"
+    if exp["B_add"] != 150: return f"B_add_{exp['B_add']}"
+    if exp["gamma"] != 1.0: return f"gamma_{exp['gamma']}"
+    if exp["tau_dom"] != 0.001: return f"tau_dom_{exp['tau_dom']}"
+    return "Proposed_Baseline(ABC)"
+
+# 5. 実験ループ
+results = []
+print("Starting Ablation Study...")
+for i, (jid, counts_dict) in enumerate(counts_list):
+    print(f"\n--- Job {i+1}/10 : {jid} ---")
+    for exp in experiments:
+        exp_name = get_exp_name(exp)
+
+        if exp["method"] == "Standard_SQD":
+            hist, elapsed = run_standard_sqd(hcore, eri, num_orbitals, nelec, counts_dict, nuclear_repulsion_energy)
+        else:
+            as_sqd = FermionicAS_SQD_Ablation(
+                hcore, eri, counts_dict, K_init=100,
+                num_orbs=num_orbitals, nelec_tuple=nelec,
+                score_type=exp["score_type"]
+            )
+            hist, elapsed = as_sqd.run(iterations=5, B_add=exp["B_add"], tau_dom=exp["tau_dom"], gamma=exp["gamma"])
+
+        errors = [abs(e - exact_energy) for e in hist]
+
+        res = {
+            "Job_ID": jid,
+            "Experiment_Name": exp_name,
+            "Method": exp["method"],
+            "Score_Type": exp.get("score_type", "N/A"),
+            "B_add": exp.get("B_add", "N/A"),
+            "gamma": exp.get("gamma", "N/A"),
+            "tau_dom": exp.get("tau_dom", "N/A"),
+            "Time_sec": elapsed,
+        }
+        for idx in range(5):
+            res[f"Iter_{idx+1}_Energy"] = hist[idx]
+            res[f"Iter_{idx+1}_Error"] = errors[idx]
+
+        results.append(res)
+        print(f"  [{exp_name:.<30}] Final Error: {errors[-1]:.6f} Ha, Time: {elapsed:.2f} s")
+
+# 6. データ集計とCSV保存
+df_raw = pd.DataFrame(results)
+df_raw.to_csv("results/ablation_results_raw.csv", index=False)
+
+# 統計情報の計算 (平均、分散、標準偏差、中央値)
+summary_cols = ["Time_sec"] + [f"Iter_{i+1}_Error" for i in range(5)]
+df_summary = df_raw.groupby("Experiment_Name")[summary_cols].agg(["mean", "var", "std", "median"])
+df_summary.to_csv("results/ablation_results_summary.csv")
+
+print("\n\n=== Ablation Study Summary (Mean Values) ===")
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 1000)
+print(df_summary.xs('mean', axis=1, level=1))
+
+# 7. プロット作成
+def plot_results(df, filter_exps, title, filename):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    x_iters = range(1, 6)
+
+    for exp_name in filter_exps:
+        sub_df = df[df["Experiment_Name"] == exp_name]
+        if sub_df.empty: continue
+
+        mean_errors = [sub_df[f"Iter_{i}_Error"].mean() for i in x_iters]
+        std_errors = [sub_df[f"Iter_{i}_Error"].std() for i in x_iters]
+
+        # 提案手法
+        linewidth = 3 if "Proposed" in exp_name else 1.5
+        marker = 'D' if "Proposed" in exp_name else 'o'
+
+        ax.errorbar(x_iters, mean_errors, yerr=std_errors, marker=marker,
+                    capsize=4, label=exp_name, linewidth=linewidth, alpha=0.8)
+
+    ax.axhline(y=0.0016, color="#BF5700", linestyle="--", linewidth=2, label="Chemical Accuracy (1 kcal/mol)")
+    ax.set_yscale('log')
+    ax.set_xticks(x_iters)
+    ax.set_xlabel('Iteration Index', fontsize=12)
+    ax.set_ylabel('Absolute Energy Error (Hartree)', fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.legend(fontsize=9, bbox_to_anchor=(1.02, 1), loc='upper left')
+    ax.grid(True, which="both", ls="-", alpha=0.2)
+
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+# 評価関数のアブレーションプロット
+score_exps = [
+    "Standard_SQD", "Score_A", "Score_B", "Score_C",
+    "Score_AB", "Score_BC", "Score_AC", "Proposed_Baseline(ABC)"
+]
+plot_results(df_raw, score_exps,
+             "Ablation Study: Score Function Components\nA=Energy, B=Penalty, C=Sampling Confidence",
+             "figures/ablation_score_functions.png")
+
+# パラメータのアブレーションプロット
+param_exps = [
+    "Proposed_Baseline(ABC)",
+    "B_add_50", "B_add_300",
+    "gamma_0.1", "gamma_5.0",
+    "tau_dom_0.01", "tau_dom_0.0001"
+]
+plot_results(df_raw, param_exps,
+             "Ablation Study: AS-SQD Hyperparameters",
+             "figures/ablation_hyperparameters.png")
+
+print("\nProcess finished. Results are saved in 'results/' and figures in 'figures/' directories.")

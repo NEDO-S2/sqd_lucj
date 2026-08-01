@@ -1,0 +1,65 @@
+% Hyperparameter sensitivity tables for Pb clusters
+% Source: results/*/ablation_results_raw.csv (10-run means)
+% Time (s): wall time for full 20-iteration run.
+% Errors: mean |E-E_CASCI| [Ha] at iterations 1,5,10,15,20.
+% Baseline: score=ABC, B_add=600, gamma=1.0, tau_dom=10^{-3}.
+
+\begin{table}[t]
+\centering
+\caption{Hyperparameter sensitivity analysis of AS-SQD on the Pb$_2$ cluster. Classical runtime and average energy errors (mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20) are evaluated by independently modifying the expansion rate ($B_{\mathrm{add}}$), penalty parameter ($\gamma$), and dominant threshold ($\tau_{\mathrm{dom}}$) relative to the baseline proposed model ($B_{\mathrm{add}}=600$, $\gamma=1.0$, $\tau_{\mathrm{dom}}=10^{-3}$). All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs). Time is the wall time of the full 20-iteration run.}\label{tab:sensitivity_pb2}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Parameter Setting & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+$B_{\mathrm{add}}=200$ & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+$B_{\mathrm{add}}=1200$ & 0.35 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+$\gamma=0.1$ & 0.35 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+$\gamma=5.0$ & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+$\tau_{\mathrm{dom}}=10^{-4}$ & 0.37 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+$\tau_{\mathrm{dom}}=10^{-2}$ & 0.33 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+Baseline Proposed & 0.34 & 3.609$\times10^{-4}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ & 3.602$\times10^{-10}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Hyperparameter sensitivity analysis of AS-SQD on the Pb$_3$ cluster. Classical runtime and average energy errors (mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20) are evaluated by independently modifying the expansion rate ($B_{\mathrm{add}}$), penalty parameter ($\gamma$), and dominant threshold ($\tau_{\mathrm{dom}}$) relative to the baseline proposed model ($B_{\mathrm{add}}=600$, $\gamma=1.0$, $\tau_{\mathrm{dom}}=10^{-3}$). All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs). Time is the wall time of the full 20-iteration run.}\label{tab:sensitivity_pb3}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Parameter Setting & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+$B_{\mathrm{add}}=200$ & 3.07 & 5.925$\times10^{-1}$ & 7.181$\times10^{-5}$ & 7.980$\times10^{-7}$ & 7.980$\times10^{-7}$ & 7.980$\times10^{-7}$ \\
+$B_{\mathrm{add}}=1200$ & 3.05 & 5.925$\times10^{-1}$ & 6.724$\times10^{-7}$ & 6.724$\times10^{-7}$ & 6.724$\times10^{-7}$ & 6.724$\times10^{-7}$ \\
+$\gamma=0.1$ & 2.88 & 5.925$\times10^{-1}$ & 7.572$\times10^{-7}$ & 7.572$\times10^{-7}$ & 7.572$\times10^{-7}$ & 7.572$\times10^{-7}$ \\
+$\gamma=5.0$ & 2.99 & 5.925$\times10^{-1}$ & 7.338$\times10^{-7}$ & 7.338$\times10^{-7}$ & 7.338$\times10^{-7}$ & 7.338$\times10^{-7}$ \\
+$\tau_{\mathrm{dom}}=10^{-4}$ & 4.63 & 5.925$\times10^{-1}$ & 6.760$\times10^{-7}$ & 1.598$\times10^{-7}$ & 4.429$\times10^{-10}$ & 4.429$\times10^{-10}$ \\
+$\tau_{\mathrm{dom}}=10^{-2}$ & 2.91 & 5.925$\times10^{-1}$ & 7.217$\times10^{-7}$ & 7.217$\times10^{-7}$ & 7.217$\times10^{-7}$ & 7.217$\times10^{-7}$ \\
+Baseline Proposed & 2.88 & 5.925$\times10^{-1}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ & 7.437$\times10^{-7}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Hyperparameter sensitivity analysis of AS-SQD on the Pb$_4$ cluster. Classical runtime and average energy errors (mean $|E-E_{\mathrm{CASCI}}|$ [Ha] at iterations 1, 5, 10, 15, and 20) are evaluated by independently modifying the expansion rate ($B_{\mathrm{add}}$), penalty parameter ($\gamma$), and dominant threshold ($\tau_{\mathrm{dom}}$) relative to the baseline proposed model ($B_{\mathrm{add}}=600$, $\gamma=1.0$, $\tau_{\mathrm{dom}}=10^{-3}$). All evaluations utilized empirical bitstring distributions from \texttt{ibm\_pittsburgh} ($10{,}000$ shots, 10 independent runs). Time is the wall time of the full 20-iteration run.}\label{tab:sensitivity_pb4}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Parameter Setting & Time (s) & Iter 1 Error & Iter 5 Error & Iter 10 Error & Iter 15 Error & Iter 20 Error \\
+\midrule
+$B_{\mathrm{add}}=200$ & 33.67 & 1.465$\times10^{0}$ & 4.567$\times10^{-1}$ & 5.625$\times10^{-2}$ & 2.619$\times10^{-4}$ & 1.242$\times10^{-4}$ \\
+$B_{\mathrm{add}}=1200$ & 45.57 & 1.465$\times10^{0}$ & 4.527$\times10^{-4}$ & 4.740$\times10^{-6}$ & 4.740$\times10^{-6}$ & 4.740$\times10^{-6}$ \\
+$\gamma=0.1$ & 37.31 & 1.465$\times10^{0}$ & 2.775$\times10^{-4}$ & 5.048$\times10^{-6}$ & 5.048$\times10^{-6}$ & 5.048$\times10^{-6}$ \\
+$\gamma=5.0$ & 43.94 & 1.465$\times10^{0}$ & 1.270$\times10^{-1}$ & 5.782$\times10^{-5}$ & 4.943$\times10^{-6}$ & 4.943$\times10^{-6}$ \\
+$\tau_{\mathrm{dom}}=10^{-4}$ & 48.91 & 1.465$\times10^{0}$ & 6.186$\times10^{-2}$ & 1.217$\times10^{-4}$ & 2.922$\times10^{-5}$ & 1.062$\times10^{-5}$ \\
+$\tau_{\mathrm{dom}}=10^{-2}$ & 37.75 & 1.465$\times10^{0}$ & 1.422$\times10^{-3}$ & 6.707$\times10^{-6}$ & 5.012$\times10^{-6}$ & 5.012$\times10^{-6}$ \\
+Baseline Proposed & 39.10 & 1.465$\times10^{0}$ & 6.437$\times10^{-2}$ & 1.596$\times10^{-5}$ & 5.015$\times10^{-6}$ & 5.015$\times10^{-6}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
