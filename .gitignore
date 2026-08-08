@@ -20,8 +20,12 @@ env/
 extracted/
 
 # --- Regenerable analysis artefacts ---
-# Cached active-space Hamiltonians rebuilt by rebuild_pb_hamiltonian.py
-analysis/ham_cache/
+# Cached active-space Hamiltonians (rebuild_pb_hamiltonian.py).
+# Keep the production caches used by StdSQDvsEN / ablation; ignore backups etc.
+analysis/ham_cache/*
+!analysis/ham_cache/pb2_ham.npz
+!analysis/ham_cache/pb3_ham.npz
+!analysis/ham_cache/pb4_ham.npz
 # Verbose PySCF / pipeline build logs
 analysis/log_*.txt
 # Volumetric orbital cube files (~165 MB, regenerable via export_orbitals.py --cube);
